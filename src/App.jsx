@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
 function parseTask(text) {
@@ -47,7 +47,14 @@ function parseTask(text) {
 
 function App() {
   const [message, setMessage] = useState("");
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState(() => {
+    const saved = localStorage.getItem("todo-chatbot-tasks");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("todo-chatbot-tasks", JSON.stringify(tasks));
+  }, [tasks]);
 
   const addTaskFromChat = () => {
     if (!message.trim()) return;
@@ -68,12 +75,21 @@ function App() {
     setTasks((prev) => prev.filter((task) => task.id !== id));
   };
 
+  const clearAllTasks = () => {
+    const confirmClear = window.confirm("Are you sure you want to delete all tasks?");
+    if (confirmClear) {
+      setTasks([]);
+    }
+  };
+
   const sortedTasks = useMemo(() => {
     return [...tasks].sort(
       (a, b) =>
         new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`)
     );
   }, [tasks]);
+
+  const completedCount = tasks.filter((task) => task.done).length;
 
   return (
     <div className="app">
@@ -96,6 +112,12 @@ function App() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Type your task here..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                addTaskFromChat();
+              }
+            }}
           />
 
           <button onClick={addTaskFromChat} className="main-btn">
@@ -108,6 +130,23 @@ function App() {
             <h2>📌 Upcoming Tasks</h2>
             <p>Sorted by nearest deadline</p>
           </div>
+
+          <div className="stats-row">
+            <div className="stat-box">
+              <span>Total</span>
+              <strong>{tasks.length}</strong>
+            </div>
+            <div className="stat-box">
+              <span>Completed</span>
+              <strong>{completedCount}</strong>
+            </div>
+          </div>
+
+          {tasks.length > 0 && (
+            <button className="clear-btn" onClick={clearAllTasks}>
+              Clear All Tasks
+            </button>
+          )}
 
           {sortedTasks.length === 0 ? (
             <div className="empty-box">
